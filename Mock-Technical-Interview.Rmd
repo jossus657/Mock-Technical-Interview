@@ -1,0 +1,183 @@
+---
+title: "Mock Technical Interview"
+author: "Joshua Susanto 405568250"
+date: "6/8/2021"
+output: html_document
+---
+```{r}
+load("_stats20_S2021_final__405568250.RData")
+load("Economics.RData")
+load("Demographic.RData")
+load("Education.RData")
+load("Language.RData")
+library(ggplot2)
+```
+
+## 1(A)
+```{r}
+dim(Demographic)
+dim(Education)
+zipcode <- merge(x = Demographic, y = Education, by = "zipcode")
+dim(zipcode)
+dim(Economics)
+zipcode2 <- merge(x = zipcode, y = Economics, by = "zipcode")
+dim(zipcode2)
+dim(Language)
+zipcode3 <- merge(x = zipcode2, y = Language, by = "zipcode")
+str(xdf)
+dim(zipcode3)
+analysis.dataset <- merge(x = xdf, y = zipcode3, by = "zipcode")
+str(analysis.dataset)
+dim(analysis.dataset)
+```
+
+
+## 1(B)
+I defined dangerous as being involved in a fatal accident (whether or not the person died or not). Thus, I found the 10 most dangerous zipcodes for accidents involving any non-drivers by filtering out any accidents that didn't involve more than just the driver. The 10 most dangerous zipcodes for drivers was defined as the zipcodes with the most amounts of accidents.
+```{r}
+summary(analysis.dataset$PERSONS)
+nondrivers <- analysis.dataset[analysis.dataset$PERSONS > 1,]
+head(sort(tapply(X = nondrivers$zipcode, INDEX = nondrivers$zipcode, FUN = length), decreasing = TRUE), n = 10)
+head(sort(table(x = analysis.dataset$zipcode), decreasing = TRUE), n = 10)
+```
+
+## 1(C)
+Just from tabling the month and year values we can see that there isn't much variation for total fatal accidents among years. There does, however, seem to be some sort of trend for months. Let's dig a bit deeper on that.
+```{r}
+table(x = analysis.dataset$YEAR)
+table(x = analysis.dataset$MONTH)
+```
+
+Below we can see a visual of a timeline from 2016-2019 and the frequency of fatal crashes. We do perhaps observe an oscillating behavior that seems to occur annually, peaking around mid year (June-July according to our previous table). 
+```{r}
+class(analysis.dataset$MONTH)
+class(analysis.dataset$YEAR)
+class(analysis.dataset$DAY)
+analysis.dataset$date <- paste(analysis.dataset$MONTH, analysis.dataset$YEAR, sep = "/")
+analysis.dataset$date <- paste(analysis.dataset$DAY, analysis.dataset$date, sep = "/")
+class(analysis.dataset$date)
+analysis.dataset$date <- as.Date(analysis.dataset$date, format = "%d/%m/%Y")
+date <- sort(analysis.dataset$date)
+date <- table(date)
+date <- as.data.frame(date)
+date$date <- as.Date(date$date, format = "%Y-%m-%d")
+head(date)
+date$group <- rep("A", times = length(date$date))
+TL <- ggplot(data = date, aes(x = date, y = Freq, colour = group)) +
+  geom_line(size = 0.5) + 
+  xlab("Timeline from 2016 to 2019") +
+  ylab("Frequency of Fatal Car Accidents") 
+TL + scale_color_manual(values = c("#6f00ff"))
+```
+
+Let us try observing the data on a monthly trend.
+```{r}
+sortedM <- unique(sort(analysis.dataset$MONTH))
+sortedY <- unique(sort(analysis.dataset$YEAR))
+sortedM <- sort(rep(sortedM, times = 4))
+sortedM
+MYdates <- paste(rep(sortedY,times=12), sortedM, sep = "/")
+MYdates <- paste(MYdates,1,sep = "/")
+MYdates <- as.Date(MYdates, format = "%Y/%m/%d")
+MYdates <- sort(MYdates)
+MYdates
+class(analysis.dataset$MONTH)
+sixteen <- analysis.dataset[analysis.dataset$YEAR == 2016,]
+seventeen <- analysis.dataset[analysis.dataset$YEAR == 2017,]
+eighteen <- analysis.dataset[analysis.dataset$YEAR == 2018,]
+nineteen  <- analysis.dataset[analysis.dataset$YEAR == 2019,]
+sixteen <- table(sixteen$MONTH)
+seventeen <- table(seventeen$MONTH)
+eighteen <- table(eighteen$MONTH)
+nineteen <- table(nineteen$MONTH)
+month.by.year <- c(sixteen,seventeen,eighteen,nineteen)
+month.by.year <- as.data.frame(month.by.year)
+head(month.by.year)
+month.by.year$date <- MYdates
+month.by.year$group <- rep("A", times = length(month.by.year$date))
+```
+
+We can now see a much clear depiction of the annual trend when looking by months. We see that while there has been an overall slight increase of fatal accidents the much more interesting observation is the annual pattern that is present every year.
+```{r}
+mby <- ggplot(month.by.year, aes(x = date, y = month.by.year, color = group)) +
+  geom_line() + 
+  xlab("Timeline from 2016 to 2019") +
+  ylab("Frequency of Fatal Car Accidents") 
+mby + scale_color_manual(values = c("#29bd04"))
+```
+
+
+## 1(D)
+```{r}
+#Checking to see what not applicable means for DOAname
+unique(analysis.dataset$WORK_INJNAME)
+unique(analysis.dataset$DOANAME)
+length(analysis.dataset$DOANAME == "Not Applicable") == length(analysis.dataset$WORK_INJNAME == "Not Applicable (not a fatality)")
+#Not applicable seems to imply that the driver did not die
+#Can't use deaths because deaths = 0 means that the driver did die 
+driverfatality <- analysis.dataset[analysis.dataset$WORK_INJNAME != "Not Applicable (not a 
+fatality)",]
+#Explore a few variables
+table(driverfatality$DRUGSNAME)
+table(driverfatality$DRINKINGNAME)
+summary(driverfatality$AGE)
+#Remove nonsensical values
+age <- driverfatality$AGE[driverfatality$AGE <= 120]
+summary(age)
+#Quick visualization
+hist(age, main = "Distribution of Age for Driver Fatality", xlab = "Age", ylab = "Frequency", col = c(age))
+analysis.dataset$driverdeath <- 1 - as.integer(analysis.dataset$WORK_INJNAME == "Not Applicable (not a fatality)")
+head(analysis.dataset$driverdeath) #1 means YES FATALITY and 0 means NO FATALITY
+#Proportion of drinking habits for driver fatality
+table(analysis.dataset[analysis.dataset$driverdeath == 1,]$DRINKINGNAME)/length(analysis.dataset$driverdeath == 1)
+#Proportion of drinking habits for non driver fatality
+table(analysis.dataset[analysis.dataset$driverdeath == 0,]$DRINKINGNAME)/length(analysis.dataset$driverdeath == 0)
+#Proportion of rollover information for driver fatality
+table(analysis.dataset[analysis.dataset$driverdeath == 1,]$ROLLOVERNAME)/length(analysis.dataset$driverdeath == 1)
+#Proportion of rollover information for non driver fatality
+table(analysis.dataset[analysis.dataset$driverdeath == 0,]$ROLLOVERNAME)/length(analysis.dataset$driverdeath == 0)
+```
+After testing a couple of variables a few definitely strike the eye. We see that from the age distribution of drivers who died that there is a right skewed distribution with the bulk of drivers being young adults. From the other findings we can see that there is a significant difference between the proportion of drinking between drivers who died and those who did not. We see the same thing with the rollover. There was a significant difference in rollover proportion between those who died and those who didn't. In the next question we will model one of these variables to get a better visual understanding of its significance. 
+
+ 
+## 2
+```{r}
+set.seed(405568250)
+sample.crash <- xdf[sample(nrow(xdf), size = 5000, replace = FALSE),]
+sample.crash <- merge(sample.crash, Demographic, by = "zipcode" )
+class(sample.crash$WORK_INJNAME)
+sample.crash$driverfatality <- 1 - as.integer(sample.crash$WORK_INJNAME == "Not Applicable (not a fatality)")
+drinkpropF <- table(sample.crash[sample.crash$driverfatality == 1,]$DRINKINGNAME)/length(sample.crash$driverfatality == 1)
+drinkpropNF <- table(sample.crash[sample.crash$driverfatality == 0,]$DRINKINGNAME)/length(sample.crash$driverfatality == 0)
+g <- rep(names(drinkpropF),2)
+h <- c(rep("Fatality",5),rep("Non-Fatality",5))
+drinkprop <- as.data.frame(c(drinkpropF,drinkpropNF))
+drinkprop$fatality <- g 
+drinkprop$names <- h
+drinkprop
+samplePlot <- ggplot(data = drinkprop, aes(fill = fatality, x = names, y = c(drinkpropF,drinkpropNF))) + 
+    geom_bar(stat = "identity", position = "dodge") +
+  xlab("Fatality") +
+  ylab("Proportion")
+samplePlot + scale_fill_discrete(name = "Alcohol Involvement")
+```
+
+## 3
+```{r}
+class(analysis.dataset$PERSONS)
+#How many people are involved with respect to area type (urban/rural etc)
+tapply(X = analysis.dataset$PERSONS, INDEX = analysis.dataset$RUR_URBNAME, FUN = sum) 
+summary(analysis.dataset$DR_WGT)
+summary(analysis.dataset$DR_HGT)
+summary(analysis.dataset$AGE)
+HWA <- analysis.dataset[analysis.dataset$DR_WGT <= 500 & analysis.dataset$DR_HGT <= 90 & analysis.dataset$AGE <= 120 ,10:12]
+#Average height weight and age of the drivers involved in the accidents
+apply(HWA, 2, mean)
+#Check if we need to remove some values
+head(sort(table(analysis.dataset$CITYNAME), decreasing = TRUE))
+#Removing non important values
+CNAME <- analysis.dataset[analysis.dataset$CITYNAME != "NOT APPLICABLE" & analysis.dataset$CITYNAME != "Not Reported",]
+#Cities with the most amount of accidents
+head(sort(tapply(X = CNAME$CITYNAME, INDEX = CNAME$CITYNAME, FUN = length),decreasing = TRUE),n = 10)
+```
+
