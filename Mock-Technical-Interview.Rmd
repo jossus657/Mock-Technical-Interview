@@ -1,11 +1,11 @@
 ---
 title: "Mock Technical Interview"
-author: "Joshua Susanto 405568250"
+author: "Joshua Susanto"
 date: "6/8/2021"
 output: html_document
 ---
 ```{r}
-load("_stats20_S2021_final__405568250.RData")
+load("interview.RData")
 load("Economics.RData")
 load("Demographic.RData")
 load("Education.RData")
